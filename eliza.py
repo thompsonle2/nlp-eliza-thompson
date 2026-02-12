@@ -1,4 +1,4 @@
-# python command line regex chatbot
+# python command line regex therapist chatbot
 
 import re
 
@@ -7,8 +7,8 @@ class Eliza:
     def __init__(self):
 
         self.greet = "Eliza: Hello! My name is Eliza. What is your name?\n"
-        self.exitcmd = [r'bye', r'goodbye', r'leave me alone', r'see ya']
-        self.neg = [r'never mind', r'move on', r'forget it', r'no', r'nothing', r'go away']
+        self.exitcmd = [r'\bbye\b', r'\bgoodbye\b', r'\bleave me alone\b', r'\bsee ya\b', r'\bgo away\b']
+        self.neg = [r'\bnever mind\b', r'\bmove on\b', r'\bforget it\b', r'\bno\b', r'\bnothing\b']
         self.name = None
         self.askedName = False
         # Create dictionary with keys as regex
@@ -16,21 +16,59 @@ class Eliza:
 
         self.patterns = {
             "neg_emotion":
-                [r"\b(?P<emotion>sad|depressed|angry|mad|upset|lonely|irritated)\b"],
+                [r"\b(?:am|feel)\s+(?P<emotion>sad|depressed|angry|mad|upset|lonely|irritated)\b"],
+            "fear":
+                [r"\b(?:am\s+)?(?:afraid|fear|scared)\s+(of\s+)?(?P<fear>.+)"],
             "relationship":
-                [r"\b(?P<relation>family|relationship|boyfriend|girlfriend|partner|spouse|friend|mom|mother|dad|father)\b"],
+                [r"\bmy\s+(?P<relation>family|relationship|boyfriend|girlfriend|partner|spouse|friend|mom|mother|dad|father)\b"],
             "desire":
-                [r"\b(want|need|think) (?P<desire>.+)"],
+                [r"\bwant\s+(?P<desire>.+)"],
             "need":
                 [r"\bneed\s+(?P<need>.+)"],
             "interest":
-                [r"\b(like|enjoy|love)\s+(?P<interest>.+)"],
-            "fear":
-                [r"\b(afraid|fear|scared)\s+(of\s+)?(?P<fear>.+)"],
+                [r"\b(?:like|enjoy|love)\s+(?P<interest>.+)"],
             "belief":
-                [r"\b(think|believe|feel)\s+(that\s+)?(?P<belief>.+)"]
+                [r"\b(?:think|believe|feel)\s+(that\s+)?(?P<belief>.+)"]
         }
 
+        # pronoun reflections
+        self.reflections = {
+            "i" : "you",
+            "me" : "you",
+            "my" : "you",
+            "mine" : "yours",
+            "am" : "are",
+            "you" : "I",
+            "your" : "my",
+            "yours" : "mine"
+        }
+
+    def matchPattern(self, pattern, word):
+
+        if pattern == 'neg_emotion':
+            print(f"What is causing you to feel like you are {word['emotion']}?")
+        elif pattern == 'relationship':
+            print(f"Tell me more about your {word['relation']}")
+            # pronoun reflections with temp variable for all below
+        elif pattern == 'fear':
+            swapped = self.reflect(word['fear'])
+            print(f"What about {swapped} makes you feel afraid?")
+        elif pattern == 'desire':
+            swapped = self.reflect(word['desire'])
+            print(f"Why do you want {swapped}?")
+        elif pattern == 'need':
+            swapped = self.reflect(word['need'])
+            print(f"Why do you need {swapped}?")
+        elif pattern == 'interest':
+            swapped = self.reflect(word['interest'])
+            print(f"What do you enjoy about {swapped}?")
+        elif pattern == 'belief':
+            swapped = self.reflect(word['belief'])
+            print(f"Why do you believe that {swapped}?")
+        else:
+            print("Please, tell me more.")
+
+# talk to bot
 
     def chat(self):
         user = input(self.greet)
@@ -45,11 +83,6 @@ class Eliza:
         print("What would you like to talk about?")
         user = input(f"[{self.name}]: ")
 
-        #check if they mentioned keyword instead
-        pattern, word = self.subject(user)
-        if pattern != "_":
-            self.matchPattern(pattern, word)
-
         self.handle_chat(user)
 
     def handle_chat(self, user):
@@ -57,29 +90,15 @@ class Eliza:
             if self.check_exit(user):
                 break
             pattern, word = self.subject(user)
-            self.matchPattern(pattern, word)
-            # if pattern != "_":
-            #     self.matchPattern(pattern)
-        user = input(f"{self.name}> ")
 
-    def matchPattern(self, pattern, word):
+            if pattern != "_":
+                self.matchPattern(pattern, word)
+            user = input(f"[{self.name}]: ")
 
-        if pattern == 'neg_emotion':
-            print(f"What is causing you to feel {word['neg_emotion']}?")
-        elif pattern == 'relationship':
-            print(f"Tell me more about your {word['relation']}")
-        elif pattern == 'desire':
-            print(f"Why do you {word['desire']}?")
-        elif pattern == 'need':
-            print(f"Why do you need {word['need']}?")
-        elif pattern == 'interest':
-            print(f"What do you enjoy about {word['interest']}?")
-        elif pattern == 'fear':
-            print(f"What about {word['fear']} makes you feel afraid?")
-        elif pattern == 'belief':
-            print(f"Why do you believe that {word['belief']}?")
-        else:
-            print("Please, tell me more.")
+# swap pronouns
+    def reflect(self, text):
+        pattern = r'\b(?:' + '|' .join(map(re.escape, self.reflections.keys())) + r')\b'
+        return re.sub(pattern, lambda m: self.reflections[m.group(0).lower()], text, flags=re.IGNORECASE)
 
 # what user wants to talk about
 
@@ -92,7 +111,7 @@ class Eliza:
                 match = re.search(reg, user)
                 if match:
                     ######################
-                    word = match.groupdict
+                    word = match.groupdict()
                     return pattern, word
         print("I'm sorry, I don't understand that. Could you please rephrase?")
         user = input(f"[{self.name}]: ")
